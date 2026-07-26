@@ -15,6 +15,7 @@ orientation = portrait
 fullscreen = 0
 
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.accept_sdk_license = True
 
 android.api = 34
 android.minapi = 23

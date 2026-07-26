@@ -9,7 +9,7 @@ source.include_exts = py,png,jpg,kv,atlas
 version = 0.1
 
 # openpyxl тянет за собой et_xmlfile — оба чистый Python, ставятся через pip
-requirements = python3,kivy==2.3.0,openpyxl,et_xmlfile,pyjnius
+requirements = python3==3.11.6,kivy==2.3.0,openpyxl,et_xmlfile,pyjnius
 
 orientation = portrait
 fullscreen = 0

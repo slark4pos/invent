@@ -16,6 +16,9 @@ jobs:
       - name: Build APK with Buildozer
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          unset PYTHONPATH
+          echo "pip==24.0" > /tmp/pip-constraint.txt
+          export PIP_CONSTRAINT=/tmp/pip-constraint.txt
           buildozer android debug
 
       - name: Upload APK

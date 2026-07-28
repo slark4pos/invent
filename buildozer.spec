@@ -17,9 +17,12 @@ fullscreen = 0
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.accept_sdk_license = True
 
-android.add_src 
-android.extra_manifest_application_arguments 
-android.enable_androidx
+# Нужно для кнопки "Экспорт в Excel" -> системное меню "Поделиться":
+# FileProvider объявлен в android_extra/manifest_provider.xml, список
+# расшариваемых папок — в android_extra/res/xml/file_paths.xml
+android.add_src = android_extra
+android.extra_manifest_application_arguments = android_extra/manifest_provider.xml
+android.enable_androidx = True
 
 android.api = 34
 android.minapi = 24

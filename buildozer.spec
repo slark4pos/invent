@@ -11,11 +11,15 @@ version = 0.1
 # openpyxl тянет за собой et_xmlfile — оба чистый Python, ставятся через pip
 requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.0,openpyxl,et_xmlfile,pyjnius
 
-orientation = portrait
+orientation = all
 fullscreen = 0
 
 android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.accept_sdk_license = True
+
+android.add_src 
+android.extra_manifest_application_arguments 
+android.enable_androidx
 
 android.api = 34
 android.minapi = 24

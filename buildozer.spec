@@ -18,10 +18,11 @@ android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.accept_sdk_license = True
 
 # Нужно для кнопки "Экспорт в Excel" -> системное меню "Поделиться":
-# FileProvider объявлен в android_extra/manifest_provider.xml, список
-# расшариваемых папок — в android_extra/res/xml/file_paths.xml
-android.add_src = android_extra
-android.extra_manifest_application_arguments = android_extra/manifest_provider.xml
+# - res_xml кладёт file_paths.xml туда, где Android его ищет (res/xml/)
+# - hook.py дописывает <provider> прямо в AndroidManifest.xml после сборки
+#   (см. комментарии в android_extra/hook.py — почему именно так)
+android.res_xml = android_extra/res/xml/file_paths.xml
+p4a.hook = android_extra/hook.py
 android.enable_androidx = True
 
 android.api = 34

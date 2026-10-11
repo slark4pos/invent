@@ -1,0 +1,47 @@
+name: Сборка APK
+
+# Запускается при каждом пуше в main и вручную (вкладка Actions → «Сборка APK» → Run workflow).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Ставит Android SDK и принимает лицензии — без этого Gradle может упасть на «license not accepted».
+      - uses: android-actions/setup-android@v3
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: Собрать веб-часть
+        run: npm run build
+
+      - name: Перенести веб-часть в Android-проект
+        run: npx cap sync android
+
+      - name: Собрать APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Выложить APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-mimino-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

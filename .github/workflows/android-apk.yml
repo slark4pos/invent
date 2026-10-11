@@ -23,9 +23,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Ставит Android SDK и принимает лицензии — без этого Gradle может упасть на «license not accepted».
-      - uses: android-actions/setup-android@v3
-
       - name: Установить зависимости
         run: npm ci
 

@@ -193,6 +193,29 @@ export const actions = {
     commit({ ...db, sessions: db.sessions.filter((s) => s.id !== id) });
   },
 
+  /* ---------------- восстановление с сервера ---------------- */
+
+  /** Добавляет пересчёты, которых ещё нет на устройстве (существующие не трогает). */
+  mergeSessions(list: Session[]) {
+    const have = new Set(db.sessions.map((s) => s.id));
+    const added = list.filter((s) => !have.has(s.id));
+    if (!added.length) return;
+    commit({ ...db, sessions: [...db.sessions, ...added].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) });
+  },
+
+  /** Заменяет справочник, журнал и настройки копией с сервера; пересчёты остаются как есть. */
+  restoreCatalog(b: Pick<Db, 'version' | 'categories' | 'products' | 'locations' | 'movements' | 'settings'>) {
+    if (b.version !== db.version) throw new Error('Копия сделана другой версией приложения');
+    commit({
+      ...db,
+      categories: b.categories,
+      products: b.products,
+      locations: b.locations,
+      movements: onlyWriteoffs(b.movements),
+      settings: b.settings ?? db.settings,
+    });
+  },
+
   /* ---------------- журнал списаний ---------------- */
 
   addMovement(m: Omit<Movement, 'id' | 'at'>) {

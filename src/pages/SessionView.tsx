@@ -22,6 +22,7 @@ import { downloadBlob, isNative, shareOrDownload } from '../lib/share';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/Confirm';
 import { BAR_NAME } from '../config';
+import { syncNow } from '../lib/sync';
 
 export default function SessionView() {
   const { sessionId } = useParams();
@@ -85,6 +86,11 @@ export default function SessionView() {
     }
     actions.finishSession(session.id);
     toast.show('Пересчёт завершён');
+    // Отправка на сервер: если связи нет, пересчёт уйдёт позже сам.
+    void syncNow().then((r) => {
+      if (r.error === 'not-configured') return;
+      toast.show(r.ok ? 'Пересчёт отправлен на сервер' : `Сервер недоступен — отправится позже (${r.error})`);
+    });
   };
 
   const remove = async () => {

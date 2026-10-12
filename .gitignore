@@ -4,3 +4,4 @@ dist
 ios
 *.log
 *.tsbuildinfo
+server/data

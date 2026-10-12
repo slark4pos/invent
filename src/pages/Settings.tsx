@@ -1,16 +1,42 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import Screen from '../components/Screen';
 import { actions, getDb, useDb } from '../lib/store';
 import { downloadBlob } from '../lib/share';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/Confirm';
 import type { Db } from '../types';
+import { fmtDateTime } from '../lib/calc';
+import { isConfigured, pendingCount, pullHistory, restoreCatalog, setSyncConfig, syncNow, useSync } from '../lib/sync';
 
 export default function Settings() {
   const db = useDb();
   const toast = useToast();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
+  const sync = useSync();
+  const pending = pendingCount(db, sync);
+  const [busy, setBusy] = useState(false);
+
+  const status = !isConfigured()
+    ? 'Не настроено: введите ключ доступа'
+    : sync.lastError
+      ? `Ошибка: ${sync.lastError}`
+      : pending > 0
+        ? `Ожидает отправки: ${pending}`
+        : sync.lastOk
+          ? `Всё отправлено · ${fmtDateTime(sync.lastOk)}`
+          : 'Настроено, ещё не отправляли';
+
+  const run = async (job: () => Promise<string>) => {
+    setBusy(true);
+    try {
+      toast.show(await job());
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'Не получилось');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const exportBackup = async () => {
     const blob = new Blob([JSON.stringify(getDb(), null, 2)], { type: 'application/json' });
@@ -53,6 +79,55 @@ export default function Settings() {
             onChange={(e) => actions.setSettings({ author: e.target.value })}
           />
         </label>
+      </section>
+
+      <div className="section-title">Сервер (история пересчётов)</div>
+      <section className="card col">
+        <p className="small muted" style={{ margin: 0 }}>
+          Каждый завершённый пересчёт сам уходит на сервер и хранится там. Нет связи — отправится позже.
+        </p>
+        <label className="field">
+          Адрес сервера
+          <input className="input" value={sync.url} onChange={(e) => setSyncConfig({ url: e.target.value })} autoCapitalize="none" autoCorrect="off" />
+        </label>
+        <label className="field">
+          Ключ доступа
+          <input className="input" type="password" value={sync.token} onChange={(e) => setSyncConfig({ token: e.target.value })} autoCapitalize="none" autoCorrect="off" />
+        </label>
+        <div className={`small ${sync.lastError ? 'danger' : 'muted'}`}>{status}</div>
+        <button
+          className="btn primary block"
+          disabled={busy || !isConfigured()}
+          onClick={() =>
+            void run(async () => {
+              const r = await syncNow();
+              if (!r.ok) throw new Error(r.error);
+              return r.sent ? `Отправлено пересчётов: ${r.sent}` : 'Всё уже на сервере';
+            })
+          }
+        >
+          Отправить сейчас
+        </button>
+        <button
+          className="btn block"
+          disabled={busy || !isConfigured()}
+          onClick={() => void run(async () => `Загружено пересчётов: ${(await pullHistory()).added}`)}
+        >
+          Загрузить историю с сервера
+        </button>
+        <button
+          className="btn block ghost"
+          disabled={busy || !isConfigured()}
+          onClick={() =>
+            void run(async () => {
+              const ok = await confirm('Справочник, журнал и настройки на этом устройстве будут заменены копией с сервера. Пересчёты не затрагиваются.', { okLabel: 'Заменить' });
+              if (!ok) return 'Отменено';
+              return (await restoreCatalog()) ? 'Справочник и журнал восстановлены' : 'На сервере пока нет копии';
+            })
+          }
+        >
+          Восстановить справочник и журнал
+        </button>
       </section>
 
       <div className="section-title">Данные</div>

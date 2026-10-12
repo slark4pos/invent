@@ -109,7 +109,7 @@ a { color: var(--accent); text-decoration: none; }
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   background: rgba(20, 17, 15, 0.95);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line);
@@ -474,3 +474,23 @@ table.grid tr.uncounted td:first-child { color: var(--text-dim); }
 }
 
 .products > .empty { grid-column: 1 / -1; }
+
+
+/* ---------- журнал ---------- */
+
+.suggest { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+.suggest button { text-align: left; padding: 11px 12px; background: var(--bg-elev-2); border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.suggest button:last-child { border-bottom: 0; }
+
+@media (max-width: 420px) {
+  .tabbar a { font-size: 9.5px; padding-left: 0; padding-right: 0; }
+}
+
+/* ---------- окно подтверждения ---------- */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(0, 0, 0, 0.62);
+}
+.modal { width: 100%; max-width: 420px; gap: 16px; background: var(--bg-elev-2); }

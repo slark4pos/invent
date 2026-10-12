@@ -1,6 +1,6 @@
 import type * as XLSXTypes from 'xlsx-js-style';
-import type { Session } from '../types';
-import { BAR_NAME } from '../config';
+import type { Session, WriteoffSnapshot } from '../types';
+import { BAR_NAME, WRITEOFF_SECTIONS } from '../config';
 import {
   amountInUnit,
   categorySummaries,
@@ -48,7 +48,7 @@ const NUM_STYLE = { border: BORDER, alignment: { horizontal: 'right' as const, v
  *
  * xlsx-js-style подгружается динамически — библиотека тяжёлая, а нужна только при экспорте.
  */
-export async function buildWorkbook(session: Session): Promise<XLSXTypes.WorkBook> {
+export async function buildWorkbook(session: Session, wo: WriteoffSnapshot): Promise<XLSXTypes.WorkBook> {
   const XLSX = await import('xlsx-js-style');
   const wb = XLSX.utils.book_new();
   const ordered = [...session.categories].sort((a, b) => a.order - b.order);
@@ -75,6 +75,38 @@ export async function buildWorkbook(session: Session): Promise<XLSXTypes.WorkBoo
     for (const p of list) {
       const t = productTotals(session, p);
       main.push([p.name, p.tag, unitLabel(p.unit), amountInUnit(t, p.unit)]);
+    }
+  }
+
+  /* Списания за период — в самом конце того же листа, по разделам. */
+  if (wo.items.length > 0) {
+    const date = (iso: string) => new Date(iso).toLocaleDateString('ru-RU');
+    const period = wo.from ? `с ${date(wo.from)} по ${date(wo.to)}` : `по ${date(wo.to)}`;
+    const blank = (text: string): Row => [text, ...Array.from({ length: width - 1 }, () => '')];
+
+    main.push([]);
+    catRows.push({ row: main.length, color: 'FFD966' });
+    main.push(blank(`СПИСАНИЯ ${period}`));
+
+    const sectionOf = (m: { section?: string }) => m.section ?? 'Без раздела';
+    const sections = [...new Set<string>([...WRITEOFF_SECTIONS, ...wo.items.map(sectionOf)])];
+    for (const sec of sections) {
+      const inSection = wo.items.filter((m) => sectionOf(m) === sec);
+      if (!inSection.length) continue;
+
+      // Одна строка на позицию: суммируем количество, имена тех, кто брал, — через запятую.
+      const merged = new Map<string, { name: string; unit: (typeof inSection)[number]['unit']; qty: number; who: Set<string> }>();
+      for (const m of inSection) {
+        const key = `${m.productId ?? `n:${m.name.toLowerCase()}`}|${m.unit}`;
+        const row = merged.get(key) ?? { name: m.name, unit: m.unit, qty: 0, who: new Set<string>() };
+        row.qty += m.qty;
+        if (m.who) row.who.add(m.who);
+        merged.set(key, row);
+      }
+
+      catRows.push({ row: main.length, color: 'FFF2CC' });
+      main.push(blank(sec.toUpperCase()));
+      for (const r of merged.values()) main.push([r.name, [...r.who].join(', '), unitLabel(r.unit), r.qty]);
     }
   }
 
@@ -202,6 +234,7 @@ export async function buildWorkbook(session: Session): Promise<XLSXTypes.WorkBoo
     ['Кто считал', session.author || '—'],
     ['Точки подсчёта', session.locations.map((l) => l.name).join(', ')],
     ['Позиций посчитано', `${pr.counted} из ${pr.total}`],
+    ['Записей о списании в отчёте', String(wo.items.length)],
     ['Комментарий', session.note || '—'],
   ];
   const wsInfo = XLSX.utils.aoa_to_sheet(info);
@@ -228,8 +261,11 @@ export function reportFileName(session: Session): string {
   return `инвентаризация_${safeBar}_${fileStamp(session.finishedAt ?? session.createdAt)}.xlsx`;
 }
 
-export async function buildReport(session: Session): Promise<{ blob: Blob; filename: string }> {
-  const wb = await buildWorkbook(session);
+export async function buildReport(
+  session: Session,
+  wo: WriteoffSnapshot,
+): Promise<{ blob: Blob; filename: string }> {
+  const wb = await buildWorkbook(session, wo);
   return {
     blob: await workbookToBlob(wb),
     filename: reportFileName(session),

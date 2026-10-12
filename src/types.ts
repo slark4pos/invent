@@ -66,6 +66,36 @@ export type Session = {
   categories: Category[];
   products: Product[];
   entries: Entries;
+  writeoffs?: WriteoffSnapshot;
+};
+
+/** Тип записи журнала. Сейчас только списание; поле оставлено на случай появления других типов. */
+export type MovementKind = 'writeoff';
+
+export type Movement = {
+  id: string;
+  /** Когда сделана запись (ISO). */
+  at: string;
+  kind: MovementKind;
+  /** Для списаний — куда списали: Кухня, Персонал, Комплимент, Амина, Порча. */
+  section?: string;
+  /** Позиция из справочника; у «своих» записей (товар вне справочника) пусто. */
+  productId?: string;
+  name: string;
+  /** Количество в единице позиции: мл, шт или г. */
+  qty: number;
+  unit: Unit;
+  /** Кто взял / оформил. */
+  who?: string;
+  note?: string;
+};
+
+/** Списания, попавшие в отчёт: фиксируются в момент завершения пересчёта. */
+export type WriteoffSnapshot = {
+  /** Начало периода — завершение предыдущего пересчёта (пусто, если он первый). */
+  from?: string;
+  to: string;
+  items: Movement[];
 };
 
 export type Settings = {
@@ -78,5 +108,6 @@ export type Db = {
   products: Product[];
   locations: LocationDef[];
   sessions: Session[];
+  movements: Movement[];
   settings: Settings;
 };

@@ -3,11 +3,13 @@ import Screen from '../components/Screen';
 import { actions, getDb, useDb } from '../lib/store';
 import { downloadBlob } from '../lib/share';
 import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/Confirm';
 import type { Db } from '../types';
 
 export default function Settings() {
   const db = useDb();
   const toast = useToast();
+  const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const exportBackup = async () => {
@@ -30,7 +32,7 @@ export default function Settings() {
         toast.show('Файл не похож на резервную копию');
         return;
       }
-      if (!window.confirm('Текущие данные будут заменены данными из файла. Продолжить?')) return;
+      if (!(await confirm('Текущие данные будут заменены данными из файла. Продолжить?', { okLabel: 'Заменить' }))) return;
       actions.replaceDb(parsed);
       toast.show('Данные восстановлены');
     } catch (e) {
@@ -78,8 +80,8 @@ export default function Settings() {
         />
         <button
           className="btn block ghost danger"
-          onClick={() => {
-            if (!window.confirm('Сбросить ВСЁ: справочник и все пересчёты — к тестовым данным?')) return;
+          onClick={async () => {
+            if (!(await confirm('Сбросить ВСЁ: справочник и все пересчёты — к тестовым данным?', { okLabel: 'Сбросить' }))) return;
             actions.resetToSeed();
             toast.show('Данные сброшены к тестовым');
           }}

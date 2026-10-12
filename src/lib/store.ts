@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
-import type { Cell, Category, Db, LocationDef, Product, Session, Unit } from '../types';
+import type { Cell, Category, Db, LocationDef, Movement, Product, Session, Unit } from '../types';
 import { SEED_VERSION, makeSeedDb } from '../data/seed';
 import { categoryColor } from './colors';
+import { buildWriteoffSnapshot } from './movements';
 
 const KEY = 'bar-inventory/db/v1';
 
@@ -10,6 +11,11 @@ const KEY = 'bar-inventory/db/v1';
  * данные живут только на устройстве. В Android-сборке Capacitor отдаёт
  * тот же localStorage, поэтому код переносится без изменений.
  */
+/** Приходы и продажи из журнала убрали — в старых данных оставляем только списания. */
+function onlyWriteoffs(list: Movement[] | undefined): Movement[] {
+  return (list ?? []).filter((m) => m.kind === 'writeoff');
+}
+
 function read(): Db {
   try {
     const raw = localStorage.getItem(KEY);
@@ -19,6 +25,8 @@ function read(): Db {
     // Структура справочника изменилась (появились единицы измерения и «обозначение
     // товара») — старые данные не пересчитать корректно, берём свежий справочник.
     if (parsed.version !== SEED_VERSION) return makeSeedDb();
+    // Журнал появился позже первых версий — старые данные не теряем, просто добавляем пустой.
+    parsed.movements = onlyWriteoffs(parsed.movements);
     return parsed;
   } catch {
     return makeSeedDb();
@@ -161,18 +169,23 @@ export const actions = {
   },
 
   finishSession(id: string) {
+    const target = db.sessions.find((s) => s.id === id);
+    if (!target) return;
+    const finishedAt = new Date().toISOString();
+    // Списания за период фиксируем в пересчёте: правки журнала потом не меняют старый отчёт.
+    const writeoffs = buildWriteoffSnapshot(db, target, finishedAt);
     commit({
       ...db,
-      sessions: db.sessions.map((s) =>
-        s.id === id ? { ...s, status: 'finished', finishedAt: new Date().toISOString() } : s,
-      ),
+      sessions: db.sessions.map((s) => (s.id === id ? { ...s, status: 'finished', finishedAt, writeoffs } : s)),
     });
   },
 
   reopenSession(id: string) {
     commit({
       ...db,
-      sessions: db.sessions.map((s) => (s.id === id ? { ...s, status: 'draft', finishedAt: undefined } : s)),
+      sessions: db.sessions.map((s) =>
+        s.id === id ? { ...s, status: 'draft', finishedAt: undefined, writeoffs: undefined } : s,
+      ),
     });
   },
 
@@ -180,10 +193,21 @@ export const actions = {
     commit({ ...db, sessions: db.sessions.filter((s) => s.id !== id) });
   },
 
+  /* ---------------- журнал списаний ---------------- */
+
+  addMovement(m: Omit<Movement, 'id' | 'at'>) {
+    const next: Movement = { ...m, id: uid('mv'), at: new Date().toISOString() };
+    commit({ ...db, movements: [next, ...db.movements] });
+  },
+
+  removeMovement(id: string) {
+    commit({ ...db, movements: db.movements.filter((m) => m.id !== id) });
+  },
+
   /* ---------------- резервная копия ---------------- */
 
   replaceDb(next: Db) {
-    commit(next);
+    commit({ ...next, movements: onlyWriteoffs(next.movements) });
   },
 
   resetToSeed() {

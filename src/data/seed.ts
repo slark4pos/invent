@@ -259,6 +259,7 @@ export function makeSeedDb(): Db {
     products: seedProducts,
     locations: seedLocations,
     sessions: [],
+    movements: [],
     settings: { author: '' },
   };
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Screen from '../components/Screen';
 import { actions, useDb } from '../lib/store';
 import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/Confirm';
 import type { Unit } from '../types';
 
 type Draft = { name: string; tag: string; unit: Unit; vol: string };
@@ -15,6 +16,7 @@ const UNIT_OPTIONS: { value: Unit; label: string }[] = [
 export default function Catalog() {
   const db = useDb();
   const toast = useToast();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<'products' | 'categories' | 'locations'>('products');
   const [openCat, setOpenCat] = useState<string | null>(null);
   const [newCatName, setNewCatName] = useState('');
@@ -79,8 +81,8 @@ export default function Catalog() {
                           />
                           <button
                             className="btn sm ghost danger"
-                            onClick={() => {
-                              if (window.confirm(`Удалить позицию «${p.name}» из справочника?`)) actions.removeProduct(p.id);
+                            onClick={async () => {
+                              if (await confirm(`Удалить позицию «${p.name}» из справочника?`, { okLabel: 'Удалить' })) actions.removeProduct(p.id);
                             }}
                           >
                             ×
@@ -190,9 +192,9 @@ export default function Catalog() {
                 />
                 <button
                   className="btn sm ghost danger"
-                  onClick={() => {
+                  onClick={async () => {
                     const n = db.products.filter((p) => p.categoryId === c.id).length;
-                    if (window.confirm(`Удалить раздел «${c.name}» и ${n} позиций в нём?`)) actions.removeCategory(c.id);
+                    if (await confirm(`Удалить раздел «${c.name}» и ${n} позиций в нём?`, { okLabel: 'Удалить' })) actions.removeCategory(c.id);
                   }}
                 >
                   ×
@@ -241,8 +243,8 @@ export default function Catalog() {
               <button
                 className="btn sm ghost danger"
                 disabled={db.locations.length <= 1}
-                onClick={() => {
-                  if (window.confirm(`Убрать точку «${l.name}»?`)) actions.removeLocation(l.id);
+                onClick={async () => {
+                  if (await confirm(`Убрать точку «${l.name}»?`, { okLabel: 'Убрать' })) actions.removeLocation(l.id);
                 }}
               >
                 ×

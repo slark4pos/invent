@@ -176,3 +176,9 @@ export function fileStamp(iso: string): string {
   const pad = (x: number) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`;
 }
+
+/** Количество в единице позиции: «50 мл», «1,5 л», «12 шт», «250 г». */
+export function fmtQty(qty: number, unit: Unit): string {
+  if (unit === 'ml') return qty !== 0 && Math.abs(qty) < 1000 ? `${fmtNum(qty)} мл` : `${fmtNum(qty / 1000, 2)} л`;
+  return `${fmtNum(qty, 2)} ${unit === 'pcs' ? 'шт' : 'г'}`;
+}

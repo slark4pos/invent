@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import Screen from '../components/Screen';
 import { useDb } from '../lib/store';
+import { sessionWriteoffs } from '../lib/movements';
 import { fmtDateTime, fmtTotals, sessionProgress, sessionTotals } from '../lib/calc';
 import { buildReport } from '../lib/excel';
 import { shareOrDownload } from '../lib/share';
@@ -16,7 +17,7 @@ export default function History() {
 
   const share = async (s: Session) => {
     try {
-      const { blob, filename } = await buildReport(s);
+      const { blob, filename } = await buildReport(s, sessionWriteoffs(db, s));
       const res = await shareOrDownload(blob, filename);
       toast.show(res === 'shared' ? 'Отчёт отправлен' : 'Файл скачан');
     } catch (e) {

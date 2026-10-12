@@ -2,6 +2,8 @@ import { NavLink } from 'react-router-dom';
 
 const tabs = [
   { to: '/', ic: '🏠', label: 'Главная' },
+  { to: '/journal', ic: '📝', label: 'Журнал' },
+  { to: '/stock', ic: '📦', label: 'Остатки' },
   { to: '/history', ic: '🗂', label: 'История' },
   { to: '/catalog', ic: '📋', label: 'Справочник' },
   { to: '/settings', ic: '⚙️', label: 'Настройки' },

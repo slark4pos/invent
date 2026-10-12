@@ -60,9 +60,11 @@ jobs:
       - name: Проверить подпись
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk mimino-inventory.apk
+          ls -l mimino-inventory.apk
           APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
-          # Отпечаток сертификата должен быть одинаковым в каждой сборке — иначе обновление не встанет.
-          "$APKSIGNER" verify --print-certs mimino-inventory.apk | grep -E "Signer #1 certificate (SHA-256|DN)"
+          echo "apksigner: $APKSIGNER"
+          # Отпечаток сертификата (SHA-256) должен быть одинаковым в каждой сборке — иначе обновление не встанет.
+          "$APKSIGNER" verify --verbose --print-certs mimino-inventory.apk
 
       - name: Выпустить релиз
         env:

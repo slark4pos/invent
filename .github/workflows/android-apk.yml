@@ -1,10 +1,16 @@
 name: Сборка APK
 
-# Запускается при каждом пуше в main и вручную (вкладка Actions → «Сборка APK» → Run workflow).
+# Каждый пуш в main собирает подписанный APK и выкладывает его в Releases.
+# Постоянная ссылка на свежую версию:
+#   https://github.com/slark4pos/invent/releases/latest/download/mimino-inventory.apk
+# Вручную: вкладка Actions → «Сборка APK» → Run workflow.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write # нужно, чтобы создать релиз
 
 jobs:
   apk:
@@ -32,13 +38,39 @@ jobs:
       - name: Перенести веб-часть в Android-проект
         run: npx cap sync android
 
-      - name: Собрать APK
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Подготовить ключ подписи
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Нет секрета ANDROID_KEYSTORE_BASE64 (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/mimino.jks"
 
-      - name: Выложить APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: inventory-mimino-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+      - name: Собрать подписанный APK
+        working-directory: android
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/mimino.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: 1.0.${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Проверить подпись
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk mimino-inventory.apk
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          # Отпечаток сертификата должен быть одинаковым в каждой сборке — иначе обновление не встанет.
+          "$APKSIGNER" verify --print-certs mimino-inventory.apk | grep -E "Signer #1 certificate (SHA-256|DN)"
+
+      - name: Выпустить релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v1.0.${{ github.run_number }}
+        run: |
+          gh release create "$TAG" mimino-inventory.apk \
+            --repo "${{ github.repository }}" \
+            --title "Версия 1.0.${{ github.run_number }}" \
+            --notes "Сборка из коммита ${GITHUB_SHA::7}" \
+            --latest
